@@ -93,7 +93,7 @@ export const joinLines = ({ lines, maximumJoinDistance }: JoinLinesInput): List<
     })
 }
 
-export const getLinkedPoints = (points: List<Point>): Line => {
+export const getLineFromPoints = (points: List<Point>): Line => {
     const head: LinkedPoint = make(points.get(0) as Point)
     let tail = head
     points.slice(1).forEach((point) => {
@@ -102,6 +102,21 @@ export const getLinkedPoints = (points: List<Point>): Line => {
         tail = newTail
     })
     return [head, tail]
+}
+
+export const getPointsFromLine = (head: LinkedPoint): List<Point> => {
+    let points = List<Point>()
+    points = points.push({
+        x: head.x,
+        y: head.y,
+    })
+    for (let point = head.next; point !== null && point !== head; point = point.next) {
+        points = points.push({
+            x: point.x,
+            y: point.y,
+        })
+    }
+    return points
 }
 
 export const getDistance = (points: [Point, Point]) => {

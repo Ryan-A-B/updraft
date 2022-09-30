@@ -1,9 +1,11 @@
 import React from "react"
 import { Set, List } from "immutable"
+import { v4 as uuid } from "uuid"
 import reducer, { InitialState, Point, Polyline, State } from "../dxf"
 import GroupCodeAndValueGenerator from "../dxf/GroupCodeAndValueGenerator"
 import LineGenerator from "../LineGenerator"
 import RangeInput from "../Input/RangeInput"
+import { getLineFromPoints, getPointsFromLine, joinLines } from "../LineJoiner"
 
 const parse = async (blob: Blob) => {
     const lines = LineGenerator(blob)
@@ -166,10 +168,13 @@ const DXFViewer: React.FunctionComponent = () => {
     const [dxf, setDXF] = React.useState<State | null>(null)
     React.useEffect(() => {
         if (file === null) return
+        console.log("parsing dxf")
         parse(file).then((dxf) => {
+            console.log("parsing complete", dxf)
             setDXF(dxf)
-        })
+        }).catch(console.error)
     }, [file])
+    console.log(dxf)
     return (
         <div className="container">
             <form>
@@ -217,6 +222,23 @@ const Viewer: React.FunctionComponent<ViewerProps> = ({ polylines, extents }) =>
             return polyline.elevation === elevation
         })
     }, [showAll, polylines, elevation])
+    const [maximumJoinDistance, setMaximumJoinDistance] = React.useState(2)
+    const joinedAndFilteredPolylines = React.useMemo(() => {
+        if (showAll) return filteredPolylines
+        if (maximumJoinDistance === 0) return filteredPolylines
+        const lines = filteredPolylines.map((polyline) => {
+            return getLineFromPoints(polyline.points)
+        })
+        const joinedLines = joinLines({ lines, maximumJoinDistance })
+        return joinedLines.map((line): Polyline => {
+            return {
+                handle: uuid(),
+                layerName: "0",
+                elevation: elevation,
+                points: getPointsFromLine(line[0]),
+            }
+        })
+    }, [showAll, filteredPolylines, elevation, maximumJoinDistance])
     return (
         <React.Fragment>
             <div>
@@ -238,9 +260,21 @@ const Viewer: React.FunctionComponent<ViewerProps> = ({ polylines, extents }) =>
                     className="form-range"
                 />
             </div>
-            {filteredPolylines.size}
+            <div>
+                <label htmlFor="input-elevation">
+                    Maxumum join distance: {maximumJoinDistance}
+                </label>
+                <RangeInput
+                    id="input-maximum_join_distance"
+                    min={0}
+                    value={maximumJoinDistance}
+                    onChange={setMaximumJoinDistance}
+                    className="form-range"
+                />
+            </div>
+            {filteredPolylines.size} vs {joinedAndFilteredPolylines.size}
             <svg height={800} viewBox={viewbox}>
-                {filteredPolylines.map((polyline) => <SVGPolyline points={polyline.points} key={polyline.handle} />)}
+                {joinedAndFilteredPolylines.map((polyline) => <SVGPolyline points={polyline.points} key={polyline.handle} />)}
             </svg>
         </React.Fragment >
     )

@@ -1,6 +1,7 @@
 import { List } from "immutable"
 import { LinkedPoint, make, push } from "./LinkedPoints"
-import { getDistance, getLinkedPoints, joinLines, Line, getHead, getTail } from "./index"
+import { getDistance, getLineFromPoints, joinLines, Line, getHead, getTail, getPointsFromLine } from "./index"
+import { Point } from "../dxf"
 
 describe("join lines", () => {
     test("no lines", () => {
@@ -409,11 +410,11 @@ describe("join lines", () => {
     })
 })
 
-describe("getLinkedPoints", () => {
+describe("getLineFromPoints", () => {
     test("one point", () => {
         const x0 = 1000 * Math.random()
         const y0 = 1000 * Math.random()
-        const [head, tail] = getLinkedPoints(List([
+        const [head, tail] = getLineFromPoints(List([
             { x: x0, y: y0 },
         ]))
 
@@ -433,7 +434,7 @@ describe("getLinkedPoints", () => {
         const y0 = 1000 * Math.random()
         const x1 = 1000 * Math.random()
         const y1 = 1000 * Math.random()
-        const [head, tail] = getLinkedPoints(List([
+        const [head, tail] = getLineFromPoints(List([
             { x: x0, y: y0 },
             { x: x1, y: y1 },
         ]))
@@ -451,6 +452,38 @@ describe("getLinkedPoints", () => {
 
     test("circular", () => {
         // TODO
+    })
+})
+
+describe("getPointsFromLine", () => {
+    test("three points", () => {
+        const head0 = make({ x: 0, y: 0 })
+        const middle0 = make({ x: 0, y: 1 })
+        const tail0 = make({ x: 0, y: 2 })
+        push(head0, middle0)
+        push(middle0, tail0)
+
+        const points = getPointsFromLine(head0)
+        expect(points.size).toBe(3)
+        expect(points.get(0)).toEqual({ x: 0, y: 0 })
+        expect(points.get(1)).toEqual({ x: 0, y: 1 })
+        expect(points.get(2)).toEqual({ x: 0, y: 2 })
+    })
+    test("round trip", () => {
+        const expectedPoints = List<Point>().withMutations((points) => {
+            const size = Math.random() * 1000
+            for (let i = 0; i < size; i++) {
+                points.push({
+                    x: Math.random() * 1e6,
+                    y: Math.random() * 1e6,
+                })
+            }
+        })
+        const line = getLineFromPoints(expectedPoints)
+        const actualPoints = getPointsFromLine(line[0])
+        expectedPoints.forEach((expectedPoint, index) => {
+            expect(actualPoints.get(index)).toEqual(expectedPoint)
+        })
     })
 })
 
